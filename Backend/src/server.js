@@ -7,9 +7,11 @@ import cors from "cors";
 const PORT = process.env.PORT || 3337;
 const app = e();
 
-const allowedOrigins = ["http://localhost:5173", process.env.FRONTEND_URL].filter(
-  Boolean,
-);
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://taskflow-lyart-nu.vercel.app",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
 app.use(
   cors({
