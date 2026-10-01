@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState } from "react";
-import api, { getApiErrorMessages } from "../services/api.js";
+import api, { getApiErrorMessages, isConnectionError, isOfflineMode } from "../services/api.js";
 
 export const TaskContext = createContext();
 
@@ -18,11 +18,24 @@ export const TaskProvider = ({ children }) => {
 
   useEffect(() => {
     async function getTasks() {
+      if (isOfflineMode) {
+        setTasks([]);
+        setError("");
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const response = await api.get("/tasks");
         setTasks(response.data);
       } catch (requestError) {
+        if (isConnectionError(requestError)) {
+          setTasks([]);
+          setError("");
+          return;
+        }
+
         setError(getApiErrorMessages(requestError, "Não foi possível carregar suas tarefas."));
       } finally {
         setLoading(false);
@@ -36,6 +49,23 @@ export const TaskProvider = ({ children }) => {
   const failed = (requestError, fallback) => ({ ok: false, error: getApiErrorMessages(requestError, fallback) });
 
   async function addTask(task) {
+    if (isOfflineMode) {
+      const newTask = {
+        id: Date.now(),
+        title: task.title,
+        description: task.description,
+        category: task.category,
+        priority: task.priority,
+        completed: false,
+        favorite: false,
+      };
+      setBusy("create", true);
+      setTasks((current) => [...current, newTask]);
+      notify("success", "Tarefa criada");
+      setBusy("create", false);
+      return { ok: true, data: newTask };
+    }
+
     setBusy("create", true);
     try {
       const response = await api.post("/tasks", task);
@@ -48,6 +78,14 @@ export const TaskProvider = ({ children }) => {
   }
 
   async function addfavorite(task) {
+    if (isOfflineMode) {
+      const key = `favorite-${task.id}`; setBusy(key, true);
+      setTasks((current) => current.map((item) => item.id === task.id ? { ...item, favorite: !item.favorite } : item));
+      notify("success", task.favorite ? "Removida dos favoritos" : "Adicionada aos favoritos");
+      setBusy(key, false);
+      return { ok: true, data: { ...task, favorite: !task.favorite } };
+    }
+
     const key = `favorite-${task.id}`; setBusy(key, true);
     try {
       const response = await api.patch(`/tasks/${task.id}/favorite`, { favorite: !task.favorite });
@@ -58,6 +96,14 @@ export const TaskProvider = ({ children }) => {
   }
 
   async function removeTask(task) {
+    if (isOfflineMode) {
+      const key = `delete-${task.id}`; setBusy(key, true);
+      setTasks((current) => current.filter((item) => item.id !== task.id));
+      notify("success", "Tarefa excluída");
+      setBusy(key, false);
+      return { ok: true };
+    }
+
     const key = `delete-${task.id}`; setBusy(key, true);
     try { await api.delete(`/tasks/${task.id}`); setTasks((current) => current.filter((item) => item.id !== task.id)); notify("success", "Tarefa excluída"); return { ok: true };
     } catch (requestError) { const result = failed(requestError, "Não foi possível excluir a tarefa."); notify("error", result.error); return result;
@@ -67,6 +113,14 @@ export const TaskProvider = ({ children }) => {
   function editTask(task) { setEditingTask(task); }
 
   async function updateTask(updatedTask) {
+    if (isOfflineMode) {
+      const key = `update-${updatedTask.id}`; setBusy(key, true);
+      setTasks((current) => current.map((task) => task.id === updatedTask.id ? updatedTask : task));
+      notify("success", "Tarefa atualizada");
+      setBusy(key, false);
+      return { ok: true, data: updatedTask };
+    }
+
     const key = `update-${updatedTask.id}`; setBusy(key, true);
     try {
       const response = await api.patch(`/tasks/${updatedTask.id}`, { title: updatedTask.title, description: updatedTask.description, category: updatedTask.category, priority: updatedTask.priority });
@@ -76,6 +130,14 @@ export const TaskProvider = ({ children }) => {
   }
 
   async function handleTaskCompletion(task) {
+    if (isOfflineMode) {
+      const key = `complete-${task.id}`; setBusy(key, true);
+      setTasks((current) => current.map((item) => item.id === task.id ? { ...item, completed: !item.completed } : item));
+      notify("success", task.completed ? "Tarefa marcada como pendente" : "Tarefa concluída");
+      setBusy(key, false);
+      return { ok: true, data: { ...task, completed: !task.completed } };
+    }
+
     const key = `complete-${task.id}`; setBusy(key, true);
     try {
       const response = await api.patch(`/tasks/${task.id}/completed`, { completed: !task.completed });

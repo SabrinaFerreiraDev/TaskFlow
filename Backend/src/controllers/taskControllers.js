@@ -8,6 +8,7 @@ class TaskFlow{
        const {title, description, category, priority} = req.body
       const task = await prisma.task.create({
          data: {
+            userId: req.user.id,
             title,
             description,
             category,

@@ -39,7 +39,7 @@ async function findTask(id, res) {
 
 
 class TaskMiddlewares {
-  async validadateCreate(req, res, next) {
+  async validateCreate(req, res, next) {
     const taskSchema = z.object({
       title: taskFields.title,
       description: taskFields.description,

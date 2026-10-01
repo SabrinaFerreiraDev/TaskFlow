@@ -1,6 +1,13 @@
-import { useContext, useEffect, useState } from "react";
+﻿import { useContext, useEffect, useState } from "react";
+import { Link, NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import "./App.css";
 import { TaskContext } from "./contexts/TaskContext.jsx";
+import { useAuth } from "./contexts/AuthContext.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
 
 function MessageList({ messages }) {
   const items = Array.isArray(messages) ? messages : [messages];
@@ -30,20 +37,66 @@ function BrandMark() {
   );
 }
 
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const initials = (user?.email || "U").trim().charAt(0).toUpperCase();
+
+  async function handleLogout() {
+    await logout();
+    navigate("/login");
+  }
+
+  if (!user) {
+    return (
+      <Link className="primary-button small-button" to="/login">
+        Entrar
+      </Link>
+    );
+  }
+
+  return (
+    <div className="user-menu">
+      <button type="button" className="user-menu-trigger" onClick={() => navigate("/profile")} aria-label="Abrir perfil do usuário">
+        <span className="avatar">{initials}</span>
+        <span className="user-email">{user.email}</span>
+      </button>
+      <div className="user-menu-panel">
+        <button type="button" onClick={() => navigate("/profile")}>
+          Perfil
+        </button>
+        <button type="button" onClick={() => navigate("/settings")}>
+          Configurações
+        </button>
+        <button type="button" onClick={handleLogout}>
+          Sair
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Header({ onFavorites }) {
   const { favoritas, themes } = useContext(TaskContext);
+
   return (
     <header className="topbar">
-      <a className="brand" href="#top" aria-label="TaskFlow início">
+      <NavLink className="brand" to="/home" aria-label="TaskFlow início">
         <BrandMark />
         <span>
           Task<span>Flow</span>
         </span>
-      </a>
+      </NavLink>
       <nav className="main-nav" aria-label="Navegação principal">
-        <a className="active" href="#tasks">
+        <NavLink className={({ isActive }) => (isActive ? "active" : "")} to="/home">
           Tarefas
-        </a>
+        </NavLink>
+        <NavLink className={({ isActive }) => (isActive ? "active" : "")} to="/profile">
+          Perfil
+        </NavLink>
+        <NavLink className={({ isActive }) => (isActive ? "active" : "")} to="/settings">
+          Configurações
+        </NavLink>
       </nav>
       <div className="header-actions">
         <button
@@ -64,9 +117,7 @@ function Header({ onFavorites }) {
           <span aria-hidden="true">☆</span>
           <span className="favorites-count">{favoritas.length}</span>
         </button>
-        <div className="avatar" aria-label="Perfil de Bruna">
-          B
-        </div>
+        <UserMenu />
       </div>
     </header>
   );
@@ -91,34 +142,10 @@ function Stats() {
   const { tasks, pendentes, concluidas, favoritas } = useContext(TaskContext);
   return (
     <section className="stats-grid" aria-label="Resumo das tarefas">
-      <StatCard
-        label="Total de tarefas"
-        value={tasks.length}
-        detail="No seu painel"
-        icon="▦"
-        accent="coral"
-      />
-      <StatCard
-        label="Pendentes"
-        value={pendentes.length}
-        detail={`${tasks.length ? Math.round((pendentes.length / tasks.length) * 100) : 0}% do total`}
-        icon="◷"
-        accent="yellow"
-      />
-      <StatCard
-        label="Concluídas"
-        value={concluidas.length}
-        detail={`${tasks.length ? Math.round((concluidas.length / tasks.length) * 100) : 0}%`}
-        icon="✓"
-        accent="mint"
-      />
-      <StatCard
-        label="Favoritas"
-        value={favoritas.length}
-        detail="Para dar atenção"
-        icon="☆"
-        accent="blue"
-      />
+      <StatCard label="Total de tarefas" value={tasks.length} detail="No seu painel" icon="▦" accent="coral" />
+      <StatCard label="Pendentes" value={pendentes.length} detail={`${tasks.length ? Math.round((pendentes.length / tasks.length) * 100) : 0}% do total`} icon="◷" accent="yellow" />
+      <StatCard label="Concluídas" value={concluidas.length} detail={`${tasks.length ? Math.round((concluidas.length / tasks.length) * 100) : 0}%`} icon="✓" accent="mint" />
+      <StatCard label="Favoritas" value={favoritas.length} detail="Para dar atenção" icon="☆" accent="blue" />
     </section>
   );
 }
@@ -166,33 +193,17 @@ function TaskForm() {
       <div className="form-grid">
         <label className="field field-title">
           <span>Título da tarefa</span>
-          <input
-            type="text"
-            maxLength={50}
-            value={title}
-            placeholder="Ex: estudar React"
-            onChange={(event) => setTitle(event.target.value)}
-          />
+          <input type="text" maxLength={50} value={title} placeholder="Ex: estudar React" onChange={(event) => setTitle(event.target.value)} />
         </label>
         <label className="field field-description">
           <span>
             Descrição <em>Opcional</em>
           </span>
-          <input
-            type="text"
-            maxLength={30}
-            value={description}
-            placeholder="Adicione mais detalhes para sua tarefa"
-            onChange={(event) => setDescription(event.target.value)}
-          />
+          <input type="text" maxLength={30} value={description} placeholder="Adicione mais detalhes para sua tarefa" onChange={(event) => setDescription(event.target.value)} />
         </label>
         <label className="field">
           <span>Prioridade</span>
-          <select
-            value={priority}
-            aria-label="Prioridade"
-            onChange={(event) => setPriority(event.target.value)}
-          >
+          <select value={priority} aria-label="Prioridade" onChange={(event) => setPriority(event.target.value)}>
             <option>Baixa</option>
             <option>Média</option>
             <option>Alta</option>
@@ -200,11 +211,7 @@ function TaskForm() {
         </label>
         <label className="field">
           <span>Categoria</span>
-          <select
-            value={category}
-            aria-label="Categoria"
-            onChange={(event) => setCategory(event.target.value)}
-          >
+          <select value={category} aria-label="Categoria" onChange={(event) => setCategory(event.target.value)}>
             <option>Estudos</option>
             <option>React</option>
             <option>Prática</option>
@@ -218,13 +225,13 @@ function TaskForm() {
     </section>
   );
 }
+
 function EditTaskModal({ task, onClose, onSave }) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [category, setCategory] = useState(task.category);
   const [priority, setPriority] = useState(task.priority);
   const [formError, setFormError] = useState("");
-
   const { isBusy } = useContext(TaskContext);
 
   async function handleUpdateTask() {
@@ -242,23 +249,13 @@ function EditTaskModal({ task, onClose, onSave }) {
 
   return (
     <div className="edit-modal">
-      <section
-        className="task-form panel edit-form"
-        aria-labelledby="edit-task-title"
-      >
+      <section className="task-form panel edit-form" aria-labelledby="edit-task-title">
         <div className="section-heading">
           <div>
             <span className="eyebrow">Atualize seu próximo passo</span>
-
             <h2 id="edit-task-title">Editar tarefa</h2>
           </div>
-
-          <button
-            className="close-button"
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar formulário"
-          >
+          <button className="close-button" type="button" onClick={onClose} aria-label="Fechar formulário">
             ×
           </button>
         </div>
@@ -266,38 +263,19 @@ function EditTaskModal({ task, onClose, onSave }) {
         <div className="form-grid">
           <label className="field field-title">
             <span>Título da tarefa</span>
-
-            <input
-              type="text"
-              maxLength={50}
-              value={title}
-              placeholder="Ex: estudar React"
-              onChange={(event) => setTitle(event.target.value)}
-            />
+            <input type="text" maxLength={50} value={title} placeholder="Ex: estudar React" onChange={(event) => setTitle(event.target.value)} />
           </label>
 
           <label className="field field-description">
             <span>
               Descrição <em>Opcional</em>
             </span>
-
-            <input
-              type="text"
-              maxLength={30}
-              value={description}
-              placeholder="Adicione mais detalhes para sua tarefa"
-              onChange={(event) => setDescription(event.target.value)}
-            />
+            <input type="text" maxLength={30} value={description} placeholder="Adicione mais detalhes para sua tarefa" onChange={(event) => setDescription(event.target.value)} />
           </label>
 
           <label className="field">
             <span>Prioridade</span>
-
-            <select
-              value={priority}
-              aria-label="Prioridade"
-              onChange={(event) => setPriority(event.target.value)}
-            >
+            <select value={priority} aria-label="Prioridade" onChange={(event) => setPriority(event.target.value)}>
               <option>Baixa</option>
               <option>Média</option>
               <option>Alta</option>
@@ -306,12 +284,7 @@ function EditTaskModal({ task, onClose, onSave }) {
 
           <label className="field">
             <span>Categoria</span>
-
-            <select
-              value={category}
-              aria-label="Categoria"
-              onChange={(event) => setCategory(event.target.value)}
-            >
+            <select value={category} aria-label="Categoria" onChange={(event) => setCategory(event.target.value)}>
               <option>Estudos</option>
               <option>React</option>
               <option>Prática</option>
@@ -325,12 +298,7 @@ function EditTaskModal({ task, onClose, onSave }) {
             Cancelar
           </button>
 
-          <button
-            className="primary-button"
-            type="button"
-            onClick={handleUpdateTask}
-            disabled={isBusy(`update-${task.id}`)}
-          >
+          <button className="primary-button" type="button" onClick={handleUpdateTask} disabled={isBusy(`update-${task.id}`)}>
             Salvar alterações
           </button>
         </div>
@@ -340,69 +308,38 @@ function EditTaskModal({ task, onClose, onSave }) {
 }
 
 function TaskFilters({ searchTerm, onSearchChange }) {
-  // const { pendentesTask, pendentes, concluidas, favoritas, tasks} = useContext(TaskContext);
-  const { tasks, pendentes, concluidas, favoritas, setFiltro, filtro } =
-    useContext(TaskContext);
+  const { tasks, pendentes, concluidas, favoritas, setFiltro, filtro } = useContext(TaskContext);
 
   return (
     <section className="filters-row" aria-label="Filtros de tarefas">
       <div className="filter-tabs">
-        <button
-          className={filtro === "todas" ? "selected" : ""}
-          type="button"
-          onClick={() => setFiltro("todas")}
-        >
+        <button className={filtro === "todas" ? "selected" : ""} type="button" onClick={() => setFiltro("todas")}>
           Todas <b>{tasks.length}</b>
         </button>
-        <button
-          type="button"
-          onClick={() => setFiltro("pendentes")}
-          className={filtro === "pendentes" ? "selected" : ""}
-        >
+        <button type="button" onClick={() => setFiltro("pendentes")} className={filtro === "pendentes" ? "selected" : ""}>
           Pendentes <b>{pendentes.length}</b>
         </button>
-        <button
-          type="button"
-          onClick={() => setFiltro("concluidas")}
-          className={filtro === "concluidas" ? "selected" : ""}
-        >
+        <button type="button" onClick={() => setFiltro("concluidas")} className={filtro === "concluidas" ? "selected" : ""}>
           Concluídas <b>{concluidas.length}</b>
         </button>
-        <button
-          type="button"
-          onClick={() => setFiltro("favoritas")}
-          className={filtro === "favoritas" ? "selected" : ""}
-        >
+        <button type="button" onClick={() => setFiltro("favoritas")} className={filtro === "favoritas" ? "selected" : ""}>
           Favoritas <b>{favoritas.length}</b>
         </button>
       </div>
       <label className="search-box">
         <span aria-hidden="true">⌕</span>
-        <input
-          type="search"
-          placeholder="Buscar tarefas..."
-          aria-label="Buscar tarefas"
-          value={searchTerm}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
+        <input type="search" placeholder="Buscar tarefas..." aria-label="Buscar tarefas" value={searchTerm} onChange={(event) => onSearchChange(event.target.value)} />
       </label>
     </section>
   );
 }
 
 function TaskCard({ task }) {
-  const { addfavorite, removeTask, handleTaskCompletion, editTask, isBusy } =
-    useContext(TaskContext);
+  const { addfavorite, removeTask, handleTaskCompletion, editTask, isBusy } = useContext(TaskContext);
   return (
     <article className={`task-card ${task.completed ? "is-completed" : ""}`}>
       <label className="task-check" aria-label={`Marcar ${task.title}`}>
-        <input
-          type="checkbox"
-          checked={task.completed}
-          aria-label={`Concluir ${task.title}`}
-          onChange={() => handleTaskCompletion(task)}
-          disabled={isBusy(`complete-${task.id}`)}
-        />
+        <input type="checkbox" checked={task.completed} aria-label={`Concluir ${task.title}`} onChange={() => handleTaskCompletion(task)} disabled={isBusy(`complete-${task.id}`)} />
         <span />
       </label>
       <div className="task-content">
@@ -420,38 +357,17 @@ function TaskCard({ task }) {
           <span className={`priority ${task.priority.toLowerCase()}`}>
             <i /> {task.priority}
           </span>
-          <span className="task-date">
-            ◷ {new Date(task.createdAt).toLocaleString("pt-BR")}
-          </span>
+          <span className="task-date">◷ {new Date(task.createdAt).toLocaleString("pt-BR")}</span>
         </div>
       </div>
       <div className="task-actions">
-        <button
-          type="button"
-          aria-label={`Editar ${task.title}`}
-          onClick={() => editTask(task)}
-          title="Editar"
-        >
+        <button type="button" aria-label={`Editar ${task.title}`} onClick={() => editTask(task)} title="Editar">
           ↗
         </button>
-        <button
-          type="button"
-          aria-label={`Excluir ${task.title}`}
-          title="Excluir"
-          onClick={() => removeTask(task)}
-          disabled={isBusy(`delete-${task.id}`)}
-        >
+        <button type="button" aria-label={`Excluir ${task.title}`} title="Excluir" onClick={() => removeTask(task)} disabled={isBusy(`delete-${task.id}`)}>
           ⌫
         </button>
-        <button
-          className={task.favorite ? "is-favorite" : ""}
-          type="button"
-          aria-label={`Favoritar ${task.title}`}
-          aria-pressed={task.favorite}
-          title="Favoritar"
-          onClick={() => addfavorite(task)}
-          disabled={isBusy(`favorite-${task.id}`)}
-        >
+        <button className={task.favorite ? "is-favorite" : ""} type="button" aria-label={`Favoritar ${task.title}`} aria-pressed={task.favorite} title="Favoritar" onClick={() => addfavorite(task)} disabled={isBusy(`favorite-${task.id}`)}>
           {task.favorite ? "★" : "☆"}
         </button>
       </div>
@@ -460,15 +376,12 @@ function TaskCard({ task }) {
 }
 
 function TaskList({ searchTerm, sortNewest, onToggleSort }) {
-  const { tarefasFiltradas, editingTask, setEditingTask, updateTask } =
-    useContext(TaskContext);
+  const { tarefasFiltradas, editingTask, setEditingTask, updateTask } = useContext(TaskContext);
   const visibleTasks = tarefasFiltradas
     .filter((task) => {
       const normalizedSearch = searchTerm.trim().toLowerCase();
       if (!normalizedSearch) return true;
-      return `${task.title} ${task.description} ${task.category}`
-        .toLowerCase()
-        .includes(normalizedSearch);
+      return `${task.title} ${task.description} ${task.category}`.toLowerCase().includes(normalizedSearch);
     })
     .sort((firstTask, secondTask) => {
       const firstDate = new Date(firstTask.createdAt).getTime();
@@ -526,24 +439,18 @@ function EmptyState() {
       <span className="eyebrow">Tudo limpo por aqui</span>
       <h2 id="empty-title">Você ainda não possui tarefas.</h2>
       <p>Comece adicionando uma tarefa para acompanhar seus estudos.</p>
-      <button
-        className="secondary-button"
-        type="button"
-        onClick={() => document.querySelector(".task-form input")?.focus()}
-      >
+      <button className="secondary-button" type="button" onClick={() => document.querySelector(".task-form input")?.focus()}>
         <span>+</span> Criar nova tarefa
       </button>
     </section>
   );
 }
 
-function App() {
-  const { tasks, concluidas, loading, error, setError, setFiltro } =
-    useContext(TaskContext);
+function TaskDashboardPage() {
+  const { tasks, concluidas, loading, error, setError, setFiltro } = useContext(TaskContext);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortNewest, setSortNewest] = useState(true);
-  const progress =
-    tasks.length > 0 ? (concluidas.length / tasks.length).toFixed(2) * 100 : 0;
+  const progress = tasks.length > 0 ? (concluidas.length / tasks.length).toFixed(2) * 100 : 0;
   const data = new Date();
 
   const dataFormatada = data
@@ -591,23 +498,59 @@ function App() {
             Carregando suas tarefas...
           </section>
         ) : tasks.length ? (
-          <TaskList
-            searchTerm={searchTerm}
-            sortNewest={sortNewest}
-            onToggleSort={() => setSortNewest((current) => !current)}
-          />
+          <TaskList searchTerm={searchTerm} sortNewest={sortNewest} onToggleSort={() => setSortNewest((current) => !current)} />
         ) : (
           <EmptyState />
         )}
       </main>
       <footer>
         <BrandMark /> <span>TaskFlow</span>
-        <span className="footer-note">
-          Feito para organizar ideias e realizar planos.
-        </span>
+        <span className="footer-note">Feito para organizar ideias e realizar planos.</span>
       </footer>
       <FeedbackToast />
     </div>
+  );
+}
+
+function RequireAuth({ children }) {
+  const { authStatus, isAuthPending } = useAuth();
+
+  if (isAuthPending || authStatus === "restoring") {
+    return <div className="auth-screen"><section className="auth-panel"><p className="form-success">Restaurando sessão...</p></section></div>;
+  }
+
+  if (authStatus !== "authenticated") {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+function PublicOnly({ children }) {
+  const { authStatus, isAuthPending } = useAuth();
+
+  if (isAuthPending || authStatus === "restoring") {
+    return <div className="auth-screen"><section className="auth-panel"><p className="form-success">Restaurando sessão...</p></section></div>;
+  }
+
+  if (authStatus === "authenticated") {
+    return <Navigate to="/home" replace />;
+  }
+
+  return children;
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<PublicOnly><LandingPage /></PublicOnly>} />
+      <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
+      <Route path="/register" element={<PublicOnly><RegisterPage /></PublicOnly>} />
+      <Route path="/home" element={<RequireAuth><TaskDashboardPage /></RequireAuth>} />
+      <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+      <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
