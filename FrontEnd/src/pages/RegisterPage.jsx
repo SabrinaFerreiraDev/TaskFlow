@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import PasswordField from "../components/PasswordField.jsx";
 
 function BrandMark() {
   return (
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { register, isAuthPending } = useAuth();
   const [form, setForm] = useState({ email: "", password: "", confirmPassword: "" });
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "", confirmPassword: "" });
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -23,27 +25,28 @@ export default function RegisterPage() {
     const email = form.email.trim();
     const password = form.password;
     const confirmPassword = form.confirmPassword;
-
-    const errors = {};
+    const nextErrors = { email: "", password: "", confirmPassword: "" };
 
     if (!email) {
-      errors.email = "O email é obrigatório.";
+      nextErrors.email = "O email é obrigatório.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = "Informe um email válido.";
+      nextErrors.email = "Informe um email válido.";
     }
 
     if (!password) {
-      errors.password = "A senha é obrigatória.";
+      nextErrors.password = "A senha é obrigatória.";
     }
 
     if (!confirmPassword) {
-      errors.confirmPassword = "Confirme sua senha.";
+      nextErrors.confirmPassword = "Confirme sua senha.";
     } else if (password !== confirmPassword) {
-      errors.confirmPassword = "As senhas não coincidem.";
+      nextErrors.confirmPassword = "As senhas não coincidem.";
     }
 
-    if (Object.keys(errors).length > 0) {
-      setFormError(Object.values(errors)[0]);
+    setFieldErrors(nextErrors);
+
+    if (nextErrors.email || nextErrors.password || nextErrors.confirmPassword) {
+      setFormError("Revise os campos destacados.");
       return;
     }
 
@@ -72,50 +75,70 @@ export default function RegisterPage() {
         </Link>
 
         <div className="auth-intro">
+          <div className="auth-badges" aria-label="Destaques de criação de conta">
+            <span className="auth-badge">Nova conta</span>
+            <span className="auth-badge muted">TaskFlow</span>
+          </div>
           <span className="eyebrow">Primeiros passos</span>
           <h1>Criar conta</h1>
           <p>Comece a organizar seus planos com um ambiente mais claro e focado.</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          <label className="field auth-field">
+          <label className={`field auth-field ${fieldErrors.email ? "has-error" : ""}`} htmlFor="register-email">
             <span>Email</span>
             <input
+              id="register-email"
               type="email"
               name="email"
               autoComplete="email"
               value={form.email}
-              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              onChange={(event) => {
+                setForm((current) => ({ ...current, email: event.target.value }));
+                setFieldErrors((current) => ({ ...current, email: "" }));
+              }}
               placeholder="seu@email.com"
               aria-label="Email"
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? "register-email-error" : undefined}
+              className={fieldErrors.email ? "input-error" : ""}
             />
+            {fieldErrors.email && (
+              <span id="register-email-error" className="field-error" role="alert">
+                {fieldErrors.email}
+              </span>
+            )}
           </label>
 
-          <label className="field auth-field">
-            <span>Senha</span>
-            <input
-              type="password"
-              name="password"
-              autoComplete="new-password"
-              value={form.password}
-              onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-              placeholder="Crie uma senha"
-              aria-label="Senha"
-            />
-          </label>
+          <PasswordField
+            id="register-password"
+            label="Senha"
+            name="password"
+            value={form.password}
+            onChange={(event) => {
+              setForm((current) => ({ ...current, password: event.target.value }));
+              setFieldErrors((current) => ({ ...current, password: "" }));
+            }}
+            placeholder="Crie uma senha"
+            autoComplete="new-password"
+            error={fieldErrors.password}
+            disabled={isAuthPending}
+          />
 
-          <label className="field auth-field">
-            <span>Confirmar senha</span>
-            <input
-              type="password"
-              name="confirmPassword"
-              autoComplete="new-password"
-              value={form.confirmPassword}
-              onChange={(event) => setForm((current) => ({ ...current, confirmPassword: event.target.value }))}
-              placeholder="Repita sua senha"
-              aria-label="Confirmar senha"
-            />
-          </label>
+          <PasswordField
+            id="register-confirm-password"
+            label="Confirmar senha"
+            name="confirmPassword"
+            value={form.confirmPassword}
+            onChange={(event) => {
+              setForm((current) => ({ ...current, confirmPassword: event.target.value }));
+              setFieldErrors((current) => ({ ...current, confirmPassword: "" }));
+            }}
+            placeholder="Repita sua senha"
+            autoComplete="new-password"
+            error={fieldErrors.confirmPassword}
+            disabled={isAuthPending}
+          />
 
           {formError && (
             <p className="form-error" role="alert">

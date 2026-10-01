@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import PasswordField from "../components/PasswordField.jsx";
 
 function BrandMark() {
   return (
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthPending } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -21,10 +23,23 @@ export default function LoginPage() {
     event.preventDefault();
 
     const email = form.email.trim();
-    const password = form.password.trim();
+    const password = form.password;
+    const nextErrors = { email: "", password: "" };
 
-    if (!email || !password) {
-      setFormError("Informe seu email e senha para continuar.");
+    if (!email) {
+      nextErrors.email = "Informe seu email.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      nextErrors.email = "Informe um email válido.";
+    }
+
+    if (!password) {
+      nextErrors.password = "Informe sua senha.";
+    }
+
+    setFieldErrors(nextErrors);
+
+    if (nextErrors.email || nextErrors.password) {
+      setFormError("Revise os campos destacados.");
       return;
     }
 
@@ -53,37 +68,55 @@ export default function LoginPage() {
         </Link>
 
         <div className="auth-intro">
+          <div className="auth-badges" aria-label="Destaques de acesso seguro">
+            <span className="auth-badge">Acesso seguro</span>
+            <span className="auth-badge muted">TaskFlow</span>
+          </div>
           <span className="eyebrow">Bem-vindo de volta</span>
           <h1>Entrar</h1>
           <p>Acesse seu painel de tarefas e continue do ponto em que parou.</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          <label className="field auth-field">
+          <label className={`field auth-field ${fieldErrors.email ? "has-error" : ""}`} htmlFor="login-email">
             <span>Email</span>
             <input
+              id="login-email"
               type="email"
               name="email"
               autoComplete="email"
               value={form.email}
-              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              onChange={(event) => {
+                setForm((current) => ({ ...current, email: event.target.value }));
+                setFieldErrors((current) => ({ ...current, email: "" }));
+              }}
               placeholder="seu@email.com"
               aria-label="Email"
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
+              className={fieldErrors.email ? "input-error" : ""}
             />
+            {fieldErrors.email && (
+              <span id="login-email-error" className="field-error" role="alert">
+                {fieldErrors.email}
+              </span>
+            )}
           </label>
 
-          <label className="field auth-field">
-            <span>Senha</span>
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              value={form.password}
-              onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-              placeholder="Digite sua senha"
-              aria-label="Senha"
-            />
-          </label>
+          <PasswordField
+            id="login-password"
+            label="Senha"
+            name="password"
+            value={form.password}
+            onChange={(event) => {
+              setForm((current) => ({ ...current, password: event.target.value }));
+              setFieldErrors((current) => ({ ...current, password: "" }));
+            }}
+            placeholder="Digite sua senha"
+            autoComplete="current-password"
+            error={fieldErrors.password}
+            disabled={isAuthPending}
+          />
 
           {formError && (
             <p className="form-error" role="alert">
