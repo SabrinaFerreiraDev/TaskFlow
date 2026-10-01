@@ -57,6 +57,7 @@ export default function PasswordField({
           className="password-toggle"
           aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
           title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+          aria-pressed={showPassword}
           onClick={togglePassword}
           disabled={disabled}
         >

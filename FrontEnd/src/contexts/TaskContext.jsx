@@ -3,6 +3,26 @@ import api, { getApiErrorMessages, isConnectionError, isOfflineMode } from "../s
 
 export const TaskContext = createContext();
 
+const getSystemTheme = () => {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
+const getStoredTheme = () => {
+  if (typeof window === "undefined") return "system";
+  const savedTheme = localStorage.getItem("taskflow-theme");
+  return savedTheme && ["light", "dark", "system"].includes(savedTheme) ? savedTheme : "system";
+};
+
+const applyTheme = (mode) => {
+  if (typeof document === "undefined") return;
+
+  const resolvedTheme = mode === "system" ? getSystemTheme() : mode;
+  document.body.classList.toggle("theme", resolvedTheme === "dark");
+  document.body.dataset.theme = resolvedTheme;
+  document.body.style.colorScheme = resolvedTheme;
+};
+
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [filtro, setFiltro] = useState("todas");
@@ -11,6 +31,7 @@ export const TaskProvider = ({ children }) => {
   const [feedback, setFeedback] = useState(null);
   const [pending, setPending] = useState({});
   const [editingTask, setEditingTask] = useState(null);
+  const [themeMode, setThemeMode] = useState(getStoredTheme);
   const pendentes = tasks.filter((task) => !task.completed);
   const concluidas = tasks.filter((task) => task.completed);
   const favoritas = tasks.filter((task) => task.favorite);
@@ -44,9 +65,37 @@ export const TaskProvider = ({ children }) => {
     getTasks();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("taskflow-theme", themeMode);
+    applyTheme(themeMode);
+  }, [themeMode]);
+
+  useEffect(() => {
+    if (themeMode !== "system" || typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleSystemThemeChange = () => applyTheme("system");
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleSystemThemeChange);
+      return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
+    }
+
+    mediaQuery.addListener(handleSystemThemeChange);
+    return () => mediaQuery.removeListener(handleSystemThemeChange);
+  }, [themeMode]);
+
   const setBusy = (key, value) => setPending((current) => ({ ...current, [key]: value }));
   const notify = (type, message) => setFeedback({ id: Date.now(), type, message });
   const failed = (requestError, fallback) => ({ ok: false, error: getApiErrorMessages(requestError, fallback) });
+
+  const themes = () => {
+    setThemeMode((current) => {
+      const actual = current === "system" ? getSystemTheme() : current;
+      return actual === "dark" ? "light" : "dark";
+    });
+  };
 
   async function addTask(task) {
     if (isOfflineMode) {
@@ -146,6 +195,5 @@ export const TaskProvider = ({ children }) => {
     } finally { setBusy(key, false); }
   }
 
-  const themes = () => document.body.classList.toggle("theme");
-  return <TaskContext.Provider value={{ tasks, loading, error, setError, feedback, setFeedback, isBusy: (key) => Boolean(pending[key]), addTask, addfavorite, removeTask, pendentes, concluidas, favoritas, themes, handleTaskCompletion, filtro, setFiltro, tarefasFiltradas, editTask, editingTask, setEditingTask, updateTask }}>{children}</TaskContext.Provider>;
+  return <TaskContext.Provider value={{ tasks, loading, error, setError, feedback, setFeedback, isBusy: (key) => Boolean(pending[key]), addTask, addfavorite, removeTask, pendentes, concluidas, favoritas, themes, themeMode, setThemeMode, handleTaskCompletion, filtro, setFiltro, tarefasFiltradas, editTask, editingTask, setEditingTask, updateTask }}>{children}</TaskContext.Provider>;
 };

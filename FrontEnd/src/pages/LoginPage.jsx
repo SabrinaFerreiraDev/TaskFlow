@@ -85,6 +85,7 @@ export default function LoginPage() {
               type="email"
               name="email"
               autoComplete="email"
+              disabled={isAuthPending}
               value={form.email}
               onChange={(event) => {
                 setForm((current) => ({ ...current, email: event.target.value }));

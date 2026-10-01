@@ -76,7 +76,7 @@ function UserMenu() {
   );
 }
 
-function Header({ onFavorites }) {
+export function Header({ onFavorites }) {
   const { favoritas, themes } = useContext(TaskContext);
 
   return (
@@ -113,6 +113,7 @@ function Header({ onFavorites }) {
           type="button"
           aria-label="Ver favoritas"
           onClick={onFavorites}
+          disabled={!onFavorites}
         >
           <span aria-hidden="true">☆</span>
           <span className="favorites-count">{favoritas.length}</span>
