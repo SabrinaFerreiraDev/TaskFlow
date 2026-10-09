@@ -21,14 +21,14 @@ const taskFields = {
 
 const taskIdSchema = z.string().uuid("O identificador da tarefa é inválido");
 
-async function findTask(id, res) {
+async function findTask(id, userId, res) {
   const parsedId = taskIdSchema.safeParse(id);
   if (!parsedId.success) {
     res.status(400).json({ message: "O identificador da tarefa é inválido" });
     return null;
   }
 
-  const task = await prisma.task.findUnique({ where: { id } });
+  const task = await prisma.task.findFirst({ where: { id, userId } });
   if (!task) {
     res.status(404).json({ message: "Tarefa não encontrada" });
     return null;
@@ -60,26 +60,26 @@ class TaskMiddlewares {
       return res.status(400).json({ message: "Nenhuma informação foi enviada" });
     }
     req.body = taskSchema.parse(req.body);
-    const task = await findTask(req.params.id, res);
+    const task = await findTask(req.params.id, req.user.id, res);
     if (!task) return;
     next();
   }
   async validadate(req, res, next) {
-    const task = await findTask(req.params.id, res);
+    const task = await findTask(req.params.id, req.user.id, res);
     if (!task) return;
     next();
   }
 
   async validateFavorite(req, res, next) {
     req.body = z.object({ favorite: z.boolean() }).strict().parse(req.body);
-    const task = await findTask(req.params.id, res);
+    const task = await findTask(req.params.id, req.user.id, res);
     if (!task) return;
     next();
   }
 
   async validateCompleted(req, res, next) {
     req.body = z.object({ completed: z.boolean() }).strict().parse(req.body);
-    const task = await findTask(req.params.id, res);
+    const task = await findTask(req.params.id, req.user.id, res);
     if (!task) return;
     next();
   }

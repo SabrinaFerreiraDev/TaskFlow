@@ -7,7 +7,7 @@ import {
   saveSession,
   updateSession,
 } from "../services/api.js";
-import { loginUser, logoutUser, registerUser, getCurrentUser, refreshSessionToken } from "../services/authService.js";
+import { loginUser, registerUser, getCurrentUser } from "../services/authService.js";
 
 const AuthContext = createContext(null);
 
@@ -24,7 +24,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const storedSession = getStoredSession();
   const [user, setUser] = useState(storedSession.user ?? null);
-  const [authStatus, setAuthStatus] = useState(storedSession.refreshToken ? "restoring" : "unauthenticated");
+  const [authStatus, setAuthStatus] = useState(storedSession.accessToken ? "restoring" : "unauthenticated");
   const [isAuthPending, setIsAuthPending] = useState(false);
   const [sessionError, setSessionError] = useState("");
 
@@ -64,6 +64,9 @@ export function AuthProvider({ children }) {
     try {
       const response = await loginUser(email, password);
       const payload = response?.data ?? {};
+      if (!payload?.accessToken || !payload?.user?.id) {
+        throw new Error("Resposta de autenticação inválida");
+      }
       const nextUser = payload.user ?? { email: email.trim() };
 
       persistSession({
@@ -72,7 +75,7 @@ export function AuthProvider({ children }) {
         user: nextUser,
       });
 
-      return { ok: true, data: payload };
+      return { ok: true, data: nextUser };
     } catch (requestError) {
       const result = getApiErrorMessages(requestError, "Não foi possível entrar na sua conta.");
       setUser(null);
@@ -94,6 +97,9 @@ export function AuthProvider({ children }) {
 
     try {
       const response = await registerUser(email, password);
+      if (!response?.data?.user?.id) {
+        throw new Error("Resposta de cadastro inválida");
+      }
       return { ok: true, data: response.data };
     } catch (requestError) {
       const result = getApiErrorMessages(requestError, "Não foi possível criar a conta.");
@@ -112,15 +118,8 @@ export function AuthProvider({ children }) {
 
     setIsAuthPending(true);
 
-    try {
-      await logoutUser();
-    } catch (requestError) {
-      const result = getApiErrorMessages(requestError, "Não foi possível encerrar a sessão.");
-      setSessionError(Array.isArray(result) ? result[0] : result);
-    } finally {
-      clearSession();
-      setIsAuthPending(false);
-    }
+    clearSession();
+    setIsAuthPending(false);
   }
 
   async function restoreSession() {
@@ -132,29 +131,18 @@ export function AuthProvider({ children }) {
     }
 
     const session = getStoredSession();
-    if (!session.refreshToken) {
+    if (!session.accessToken) {
       clearSession();
-      return { ok: false, error: "Refresh token ausente." };
+      return { ok: false, error: "Token de acesso ausente." };
     }
 
     setIsAuthPending(true);
     setSessionError("");
 
     try {
-      const response = await refreshSessionToken(session.refreshToken);
-      const payload = response?.data ?? {};
-      const nextUser = payload.user ?? session.user ?? null;
-
-      if (!payload.accessToken) {
-        clearSession();
-        return { ok: false, error: "Não foi possível restaurar a sessão." };
-      }
-
-      persistSession({
-        accessToken: payload.accessToken,
-        refreshToken: payload.refreshToken ?? session.refreshToken,
-        user: nextUser,
-      });
+      const response = await getCurrentUser();
+      const nextUser = response?.data ?? null;
+      persistSession({ accessToken: session.accessToken, user: nextUser });
 
       setAuthStatus("authenticated");
       return { ok: true, data: payload };
@@ -177,9 +165,9 @@ export function AuthProvider({ children }) {
     }
 
     const session = getStoredSession();
-    if (!session.refreshToken) {
+    if (!session.accessToken) {
       clearSession();
-      return { ok: false, error: "Refresh token ausente." };
+      return { ok: false, error: "Token de acesso ausente." };
     }
 
     setIsAuthPending(true);
@@ -191,11 +179,6 @@ export function AuthProvider({ children }) {
       setAuthStatus(nextUser ? "authenticated" : "unauthenticated");
       return { ok: true, data: nextUser };
     } catch (requestError) {
-      const refreshResult = await restoreSession();
-      if (refreshResult.ok) {
-        return { ok: true, data: getStoredSession().user };
-      }
-
       const result = getApiErrorMessages(requestError, "Sessão indisponível no momento.");
       clearSession();
       setSessionError(Array.isArray(result) ? result[0] : result);

@@ -2,7 +2,8 @@ import axios from "axios";
 
 const STORAGE_KEY = "taskflow_session";
 
-export const isOfflineMode = !import.meta.env.VITE_API_URL;
+// A URL ausente deve resultar em uma falha real da requisição, e não em uma sessão ou tarefas fictícias.
+export const isOfflineMode = false;
 
 export function getStoredSession() {
   if (typeof window === "undefined") return { accessToken: "", refreshToken: "", user: null };

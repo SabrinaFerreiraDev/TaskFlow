@@ -1,4 +1,22 @@
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
+import { prisma } from "../database/prisma.js";
+
+const credentialsSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Informe um e-mail v\u00e1lido"),
+  password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres").max(128),
+}).strict();
+
+function jwtSecret() {
+  if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET n\u00e3o foi configurado");
+  return process.env.JWT_SECRET;
+}
+
+export function validateCredentials(req, res, next) {
+  req.body = credentialsSchema.parse(req.body);
+  next();
+}
 
 export function authenticate(req, res, next) {
   const authorization = req.headers.authorization;
@@ -12,7 +30,7 @@ export function authenticate(req, res, next) {
   try {
     const token = authorization.slice(7);
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET, {
+    const payload = jwt.verify(token, jwtSecret(), {
       algorithms: ["HS256"],
     });
 
@@ -30,13 +48,9 @@ export function authenticate(req, res, next) {
   }
 }
 export async function validateUserLogin(req, res, next) {
-  const user = userSchema.parse(req.body);
-
-  req.body = user;
-
   const checkUser = await prisma.user.findUnique({
     where: {
-      email: user.email,
+      email: req.body.email,
     },
   });
 
@@ -47,7 +61,7 @@ export async function validateUserLogin(req, res, next) {
   }
 
   const checkPassword = await bcrypt.compare(
-    user.password,
+    req.body.password,
     checkUser.password
   );
 
@@ -57,11 +71,7 @@ export async function validateUserLogin(req, res, next) {
     });
   }
 
-  req.user = {
-    id: checkUser.id,
-    email: checkUser.email,
-    role: checkUser.role,
-  };
+  req.user = checkUser;
 
   next();
 }
