@@ -104,10 +104,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const isLoginRequest = originalRequest?.url?.includes("/auth/login");
     const isRefreshRequest = originalRequest?.url?.includes("/auth/refresh");
     const isLogoutRequest = originalRequest?.url?.includes("/auth/logout");
 
-    if (error.response?.status !== 401 || isRefreshRequest || isLogoutRequest || originalRequest?._retry) {
+    if (error.response?.status !== 401 || isLoginRequest || isRefreshRequest || isLogoutRequest || originalRequest?._retry) {
       return Promise.reject(error);
     }
 

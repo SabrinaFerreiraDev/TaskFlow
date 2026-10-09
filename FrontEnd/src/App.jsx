@@ -528,9 +528,9 @@ function RequireAuth({ children }) {
 }
 
 function PublicOnly({ children }) {
-  const { authStatus, isAuthPending } = useAuth();
+  const { authStatus } = useAuth();
 
-  if (isAuthPending || authStatus === "restoring") {
+  if (authStatus === "restoring") {
     return <div className="auth-screen"><section className="auth-panel"><p className="form-success">Restaurando sessão...</p></section></div>;
   }
 

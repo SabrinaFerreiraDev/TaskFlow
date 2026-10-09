@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "", confirmPassword: "" });
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [duplicateEmail, setDuplicateEmail] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -35,6 +36,10 @@ export default function RegisterPage() {
 
     if (!password) {
       nextErrors.password = "A senha é obrigatória.";
+    } else if (password.length < 8) {
+      nextErrors.password = "A senha deve ter pelo menos 8 caracteres.";
+    } else if (password.length > 128) {
+      nextErrors.password = "A senha deve ter no máximo 128 caracteres.";
     }
 
     if (!confirmPassword) {
@@ -47,16 +52,19 @@ export default function RegisterPage() {
 
     if (nextErrors.email || nextErrors.password || nextErrors.confirmPassword) {
       setFormError("Revise os campos destacados.");
+      setDuplicateEmail(false);
       return;
     }
 
     setFormError("");
     setSuccessMessage("");
+    setDuplicateEmail(false);
 
     const result = await register(email, password);
 
     if (!result.ok) {
-      setFormError(Array.isArray(result.error) ? result.error[0] : result.error || "Não foi possível criar a conta.");
+      setFormError(result.error || "Não foi possível criar a conta.");
+      setDuplicateEmail(result.code === "EMAIL_EXISTS");
       return;
     }
 
@@ -97,6 +105,8 @@ export default function RegisterPage() {
               onChange={(event) => {
                 setForm((current) => ({ ...current, email: event.target.value }));
                 setFieldErrors((current) => ({ ...current, email: "" }));
+                setFormError("");
+                setDuplicateEmail(false);
               }}
               placeholder="seu@email.com"
               aria-label="Email"
@@ -119,6 +129,8 @@ export default function RegisterPage() {
             onChange={(event) => {
               setForm((current) => ({ ...current, password: event.target.value }));
               setFieldErrors((current) => ({ ...current, password: "" }));
+              setFormError("");
+              setDuplicateEmail(false);
             }}
             placeholder="Crie uma senha"
             autoComplete="new-password"
@@ -134,6 +146,8 @@ export default function RegisterPage() {
             onChange={(event) => {
               setForm((current) => ({ ...current, confirmPassword: event.target.value }));
               setFieldErrors((current) => ({ ...current, confirmPassword: "" }));
+              setFormError("");
+              setDuplicateEmail(false);
             }}
             placeholder="Repita sua senha"
             autoComplete="new-password"
@@ -142,9 +156,14 @@ export default function RegisterPage() {
           />
 
           {formError && (
-            <p className="form-error" role="alert">
-              {formError}
-            </p>
+            <div>
+              <p className="form-error" role="alert">{formError}</p>
+              {duplicateEmail && (
+                <Link className="link-button" to="/login" state={{ email: form.email.trim() }}>
+                  Entrar na minha conta
+                </Link>
+              )}
+            </div>
           )}
 
           {successMessage && (

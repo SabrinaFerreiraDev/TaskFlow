@@ -49,7 +49,7 @@ export default function LoginPage() {
     const result = await login(email, password);
 
     if (!result.ok) {
-      setFormError(Array.isArray(result.error) ? result.error[0] : result.error || "Não foi possível entrar.");
+      setFormError(result.error || "Não foi possível entrar.");
       return;
     }
 
@@ -90,6 +90,7 @@ export default function LoginPage() {
               onChange={(event) => {
                 setForm((current) => ({ ...current, email: event.target.value }));
                 setFieldErrors((current) => ({ ...current, email: "" }));
+                setFormError("");
               }}
               placeholder="seu@email.com"
               aria-label="Email"
@@ -112,6 +113,7 @@ export default function LoginPage() {
             onChange={(event) => {
               setForm((current) => ({ ...current, password: event.target.value }));
               setFieldErrors((current) => ({ ...current, password: "" }));
+              setFormError("");
             }}
             placeholder="Digite sua senha"
             autoComplete="current-password"

@@ -3,6 +3,7 @@ import {
   clearSessionStorage,
   getApiErrorMessages,
   getStoredSession,
+  isConnectionError,
   isOfflineMode,
   saveSession,
   updateSession,
@@ -10,6 +11,55 @@ import {
 import { loginUser, registerUser, getCurrentUser } from "../services/authService.js";
 
 const AuthContext = createContext(null);
+
+const safeValidationMessages = new Set([
+  "Informe um e-mail válido",
+  "A senha deve ter pelo menos 8 caracteres",
+  "A senha deve ter no máximo 128 caracteres",
+  "O email é obrigatório.",
+  "A senha é obrigatória.",
+  "Confirme sua senha.",
+  "As senhas não coincidem.",
+]);
+
+function getAuthError(requestError, operation) {
+  const status = requestError?.response?.status;
+  const responseMessage = requestError?.response?.data?.message;
+
+  if (operation === "login" && status === 401) {
+    return { message: "E-mail ou senha incorretos." };
+  }
+
+  if (operation === "register" && status === 409) {
+    return { message: "Este e-mail já está cadastrado.", code: "EMAIL_EXISTS" };
+  }
+
+  if (isConnectionError(requestError) || !requestError?.response) {
+    return { message: "Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente." };
+  }
+
+  const issues = requestError?.response?.data?.issues;
+  const issueMessages = Array.isArray(issues)
+    ? issues.map((issue) => issue?.message).filter((message) => safeValidationMessages.has(message))
+    : [];
+  const safeMessages = [...new Set(issueMessages ?? [])];
+
+  if (safeMessages.length) {
+    return { message: safeMessages.join(" ") };
+  }
+
+  if (safeValidationMessages.has(responseMessage)) {
+    return { message: responseMessage };
+  }
+
+  return {
+    message: status >= 500
+      ? "Não foi possível concluir a operação no momento. Tente novamente."
+      : operation === "login"
+        ? "Não foi possível entrar na sua conta. Verifique os dados e tente novamente."
+        : "Não foi possível criar a conta. Verifique os dados e tente novamente.",
+  };
+}
 
 export function useAuth() {
   const context = useContext(AuthContext);
@@ -77,11 +127,9 @@ export function AuthProvider({ children }) {
 
       return { ok: true, data: nextUser };
     } catch (requestError) {
-      const result = getApiErrorMessages(requestError, "Não foi possível entrar na sua conta.");
-      setUser(null);
-      setAuthStatus("unauthenticated");
-      setSessionError(Array.isArray(result) ? result[0] : result);
-      return { ok: false, error: result };
+      const result = getAuthError(requestError, "login");
+      setSessionError(result.message);
+      return { ok: false, error: result.message };
     } finally {
       setIsAuthPending(false);
     }
@@ -102,9 +150,9 @@ export function AuthProvider({ children }) {
       }
       return { ok: true, data: response.data };
     } catch (requestError) {
-      const result = getApiErrorMessages(requestError, "Não foi possível criar a conta.");
-      setSessionError(Array.isArray(result) ? result[0] : result);
-      return { ok: false, error: result };
+      const result = getAuthError(requestError, "register");
+      setSessionError(result.message);
+      return { ok: false, error: result.message, code: result.code };
     } finally {
       setIsAuthPending(false);
     }
