@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import api, { getApiErrorMessages, isConnectionError, isOfflineMode } from "../services/api.js";
+import { useAuth } from "./AuthContext.jsx";
 
 export const TaskContext = createContext();
 
@@ -24,6 +25,7 @@ const applyTheme = (mode) => {
 };
 
 export const TaskProvider = ({ children }) => {
+  const { authStatus } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [filtro, setFiltro] = useState("todas");
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,16 @@ export const TaskProvider = ({ children }) => {
   const tarefasFiltradas = tasks.filter((task) => filtro === "pendentes" ? !task.completed : filtro === "concluidas" ? task.completed : filtro === "favoritas" ? task.favorite : true);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function getTasks() {
+      if (authStatus !== "authenticated") {
+        setTasks([]);
+        setError("");
+        setLoading(false);
+        return;
+      }
+
       if (isOfflineMode) {
         setTasks([]);
         setError("");
@@ -48,9 +59,12 @@ export const TaskProvider = ({ children }) => {
 
       try {
         setLoading(true);
-        const response = await api.get("/tasks");
+        setError("");
+        const response = await api.get("/tasks", { signal: controller.signal });
         setTasks(response.data);
       } catch (requestError) {
+        if (controller.signal.aborted) return;
+
         if (isConnectionError(requestError)) {
           setTasks([]);
           setError("");
@@ -59,11 +73,13 @@ export const TaskProvider = ({ children }) => {
 
         setError(getApiErrorMessages(requestError, "Não foi possível carregar suas tarefas."));
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
-    getTasks();
-  }, []);
+
+    void getTasks();
+    return () => controller.abort();
+  }, [authStatus]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

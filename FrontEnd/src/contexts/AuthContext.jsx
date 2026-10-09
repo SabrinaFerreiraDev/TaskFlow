@@ -145,7 +145,7 @@ export function AuthProvider({ children }) {
       persistSession({ accessToken: session.accessToken, user: nextUser });
 
       setAuthStatus("authenticated");
-      return { ok: true, data: payload };
+      return { ok: true, data: nextUser };
     } catch (requestError) {
       const result = getApiErrorMessages(requestError, "Sessão indisponível no momento.");
       clearSession();

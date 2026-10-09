@@ -544,7 +544,7 @@ function PublicOnly({ children }) {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<PublicOnly><LandingPage /></PublicOnly>} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
       <Route path="/register" element={<PublicOnly><RegisterPage /></PublicOnly>} />
       <Route path="/home" element={<RequireAuth><TaskDashboardPage /></RequireAuth>} />
